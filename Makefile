@@ -2,7 +2,7 @@
 .DEFAULT_GOAL := test
 
 CXX ?= clang++
-CXXFLAGS = -std=c++14 -Wall -ggdb3 -fsanitize=undefined -DDEBUG -D_GLIBCXX_DEBUG
+CXXFLAGS = -std=c++11 -Wall -ggdb3 -fsanitize=undefined -DDEBUG -D_GLIBCXX_DEBUG
 build: a.out
 a.out: a.cpp
 	${CXX} ${CXXFLAGS} $<

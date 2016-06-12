@@ -22,12 +22,7 @@
 typedef long long ll;
 template <class T> bool setmax(T & l, T const & r) { if (not (l < r)) return false; l = r; return true; }
 template <class T> bool setmin(T & l, T const & r) { if (not (r < l)) return false; l = r; return true; }
-template <typename F> auto compare_with(F const & f) { return [=](auto x, auto y) { return f(x) < f(y); }; }
 using namespace std;
-template <typename T, typename X> auto vectors(T a, X x) { return vector<T>(x, a); }
-template <typename T, typename X, typename Y, typename... Zs> auto vectors(T a, X x, Y y, Zs... zs) { auto cont = vectors(a, y, zs...); return vector<decltype(cont)>(x, cont); }
-template <class T> istream & operator >> (istream & in, vector<T> & a) { for (T & it : a) in >> it; return in; }
-template <class T> ostream & operator << (ostream & out, vector<T> const & a) { bool i = false; for (T const & it : a) { if (i) out << ' '; else i = true; out << it; } return out; }
 
 
 vector<bool> random_binary(int n) {
