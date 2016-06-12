@@ -1,0 +1,3 @@
+[submodule "online-exam"]
+	path = online-exam
+	url = https://github.com/GassaFM/online-exam
