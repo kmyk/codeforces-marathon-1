@@ -77,12 +77,12 @@ vector<bool> concat(vector<vector<bool> > const & xss) {
 }
 vector<vector<bool> > unconcat(vector<bool> const & xs, int l) {
     int n = xs.size();
-    assert (n % l == 0);
     vector<vector<bool> > yss;
     repeat (i,(n+l-1)/l) {
         yss.push_back(vector<bool>());
         repeat_from (j,i*l,min(n,i*l+l)) yss.back().push_back(xs[j]);
     }
+    assert (concat(yss) == xs);
     return yss;
 }
 vector<bool> flip(vector<bool> const & xs) {
@@ -129,7 +129,7 @@ int main() {
         estimated[flip(xs)] = flipped_score(score);
         return score;
     };
-    const int l = 40;
+    const int l = 50;
     const int x0 = 10;
     while (query_count < X) {
         if (query_count < x0) {
