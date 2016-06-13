@@ -78,8 +78,11 @@ vector<bool> concat(vector<vector<bool> > const & xss) {
 vector<vector<bool> > unconcat(vector<bool> const & xs, int l) {
     int n = xs.size();
     assert (n % l == 0);
-    vector<vector<bool> > yss(n/l, vector<bool>(l));
-    repeat (i,n) yss[i/l][i%l] = xs[i];
+    vector<vector<bool> > yss;
+    repeat (i,(n+l-1)/l) {
+        yss.push_back(vector<bool>());
+        repeat_from (j,i*l,min(n,i*l+l)) yss.back().push_back(xs[j]);
+    }
     return yss;
 }
 vector<bool> flip(vector<bool> const & xs) {
@@ -126,7 +129,7 @@ int main() {
         estimated[flip(xs)] = flipped_score(score);
         return score;
     };
-    const int l = 200;
+    const int l = 40;
     const int x0 = 10;
     while (query_count < X) {
         if (query_count < x0) {
@@ -134,14 +137,14 @@ int main() {
             query(xs);
             if (query_count == x0) {
                 vector<bool> xs = select_best(estimated);
-                cerr << "gacha done:\t\"" << to_hashed(xs, 250) << "\" -> " << history[xs] << endl;
+                cerr << "resemara done:\t\"" << to_hashed(xs, 250) << "\" -> " << history[xs] << endl;
             }
         } else {
             vector<bool> xs = select_best(estimated);
             vector<bool> ys; {
-                int j = (query_count - x0) / (X/(N/l));
+                int j = query_count - x0;
                 vector<vector<bool> > yss = unconcat(xs, l);
-                yss[j] = random_binary(l);
+                yss[j] = flip(yss[j]);
                 ys = concat(yss);
             }
             query(ys);
