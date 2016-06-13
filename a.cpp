@@ -88,23 +88,17 @@ vector<bool> flip(vector<bool> const & xs) {
     repeat (i,n) ys[i] = not xs[i];
     return ys;
 }
-template <typename F>
-vector<bool> select_best_with(map<vector<bool>,int> const & history, F f) {
+vector<bool> select_best(map<vector<bool>,int> const & history) {
     int score = -1;
     vector<bool> xs;
     for (auto it : history) {
-        vector<bool> ys; int yscore; tie(ys, yscore) = f(it.first, it.second);
+        vector<bool> ys; int yscore; tie(ys, yscore) = it;
         if (score < yscore) {
             score = yscore;
             xs = ys;
         }
     }
     return xs;
-}
-vector<bool> select_best(map<vector<bool>,int> const & history) {
-    return select_best_with(history, [](vector<bool> const & ys, int score) {
-        return make_pair(ys, score);
-    });
 }
 
 const int N = 5000;
@@ -115,16 +109,10 @@ const int ES = N - 2*K;
 int flipped_score(int score) {
     return ES + (ES - score);
 }
-vector<bool> select_flipped_best(map<vector<bool>,int> const & history) {
-    return select_best_with(history, [](vector<bool> ys, int score) {
-        ys = flip(ys);
-        score = flipped_score(score);
-        return make_pair(ys, score);
-    });
-}
 
 int main() {
     map<vector<bool>,int> history;
+    map<vector<bool>,int> estimated;
     int query_count = 0;
     auto query = [&](vector<bool> const & xs) {
         query_count += 1;
@@ -134,33 +122,29 @@ int main() {
         cerr << "query " << query_count << ":\t\"" << to_hashed(xs, 250) << "\" -> " << score << endl;
         cerr.flush();
         history[xs] = score;
+        estimated[xs] = score;
+        estimated[flip(xs)] = flipped_score(score);
         return score;
     };
     const int l = 200;
     const int x0 = 10;
-    vector<vector<bool> > xss(N/l);
     while (query_count < X) {
         if (query_count < x0) {
-            repeat (i,N/l) xss[i] = random_binary(l);
-            query(concat(xss));
+            vector<bool> xs = random_binary(N);
+            query(xs);
             if (query_count == x0) {
-                vector<bool> ys = select_best(history);
-                vector<bool> zs = select_flipped_best(history);
-                if (history[ys] < flipped_score(history[zs])) {
-                    query(flip(zs));
-                }
-                vector<bool> xs = select_best(history);
+                vector<bool> xs = select_best(estimated);
                 cerr << "gacha done:\t\"" << to_hashed(xs, 250) << "\" -> " << history[xs] << endl;
-                xss = unconcat(xs, l);
             }
         } else {
-            int j = (query_count - x0) / (X/(N/l));
-            vector<vector<bool> > yss = xss;
-            yss[j] = random_binary(l);
-            int score = query(concat(yss));
-            if (history[concat(xss)] < score) {
-                xss[j] = yss[j];
+            vector<bool> xs = select_best(estimated);
+            vector<bool> ys; {
+                int j = (query_count - x0) / (X/(N/l));
+                vector<vector<bool> > yss = unconcat(xs, l);
+                yss[j] = random_binary(l);
+                ys = concat(yss);
             }
+            query(ys);
         }
     }
     return 0;
