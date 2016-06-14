@@ -103,9 +103,9 @@ vector<bool> select_best(map<vector<bool>,int> const & history) {
     }
     return xs;
 }
-vector<bool> apply_defined(map<int,bool> const & defined, vector<bool> const & xs) {
+vector<bool> apply_decided(map<int,bool> const & decided, vector<bool> const & xs) {
     vector<bool> ys = xs;
-    for (auto it : defined) {
+    for (auto it : decided) {
         int i; bool y; tie(i, y) = it;
         ys[i] = y;
     }
@@ -115,7 +115,7 @@ vector<bool> apply_defined(map<int,bool> const & defined, vector<bool> const & x
 const int N = 5000;
 const int K = 2000;
 const int X = 100;
-const int ES = N - 2*K;
+const int ES = 2*K;
 
 int flipped_score(int score) {
     return ES + (ES - score);
@@ -124,7 +124,7 @@ int flipped_score(int score) {
 int main() {
     map<vector<bool>,int> history;
     map<vector<bool>,int> estimated;
-    map<int,bool> defined;
+    map<int,bool> decided;
     int query_count = 0;
     auto query = [&](vector<bool> const & xs) {
         query_count += 1;
@@ -136,7 +136,7 @@ int main() {
         history[xs] = score;
         estimated[xs] = score;
         estimated[flip(xs)] = flipped_score(score);
-        defined[score-1] = not xs[score-1];
+        decided[score-1] = not xs[score-1];
         return score;
     };
     const int l = 50;
@@ -144,11 +144,11 @@ int main() {
     while (query_count < X) {
         if (query_count < x0) {
             vector<bool> xs = random_binary(N);
-            xs = apply_defined(defined, xs);
+            xs = apply_decided(decided, xs);
             query(xs);
             if (query_count == x0) {
                 vector<bool> xs = select_best(estimated);
-                cerr << "resemara done:\t\"" << to_hashed(xs, 250) << "\" -> " << history[xs] << endl;
+                cerr << "resemara done:\t\"" << to_hashed(xs, 250) << "\" -> " << estimated[xs] << (history.count(xs) ? " (decided)" : " (estimated)") << endl;
             }
         } else {
             vector<bool> xs = select_best(estimated);
@@ -158,9 +158,10 @@ int main() {
                 yss[j] = flip(yss[j]);
                 ys = concat(yss);
             }
-            ys = apply_defined(defined, ys);
+            ys = apply_decided(decided, ys);
             query(ys);
         }
     }
+    assert (decided.size() == X or history[select_best(history)] == N);
     return 0;
 }
