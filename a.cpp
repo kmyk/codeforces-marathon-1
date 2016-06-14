@@ -139,8 +139,8 @@ int main() {
         decided[score-1] = not xs[score-1];
         return score;
     };
-    const int l = 50;
-    const int x0 = 10;
+    const int l = 46;
+    const int x0 = 1;
     while (query_count < X) {
         if (query_count < x0) {
             vector<bool> xs = random_binary(N);
