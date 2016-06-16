@@ -117,12 +117,17 @@ const int K = 2000;
 const int X = 100;
 const int ES = 2*K;
 
+string visualize_decided(map<int,bool> const & decided) {
+    string s(N, '?');
+    for (auto it : decided) s[it.first] = it.second ? '1' : '0';
+    return s;
+}
 int flipped_score(int score) {
     return ES + (ES - score);
 }
-
 int main() {
-    map<vector<bool>,int> history;
+    vector<vector<bool> > history;
+    map<vector<bool>,int> scores;
     map<vector<bool>,int> estimated;
     map<int,bool> decided;
     int query_count = 0;
@@ -131,14 +136,21 @@ int main() {
         cout << decode(xs) << endl;
         cout.flush();
         int score; cin >> score;
-        cerr << "query " << query_count << ":\t\"" << to_hashed(xs, 250) << "\" -> " << score << endl;
-        cerr.flush();
-        history[xs] = score;
+        history.push_back(xs);
+        scores[xs] = score;
         estimated[xs] = score;
         estimated[flip(xs)] = flipped_score(score);
         decided[score-1] = not xs[score-1];
         return score;
     };
+    auto query_log = [&](function<void ()> f) {
+        vector<bool> xs = history.back();
+        cerr << "query " << query_count << ":\t\"" << to_hashed(xs, 250) << "\" -> " << scores[xs] << " ";
+        f();
+        cerr << endl;
+        cerr.flush();
+    };
+    int flip_count = 0;
     const int l = 46;
     const int x0 = 1;
     while (query_count < X) {
@@ -146,9 +158,10 @@ int main() {
             vector<bool> xs = random_binary(N);
             xs = apply_decided(decided, xs);
             query(xs);
+            query_log([&]() { });
             if (query_count == x0) {
                 vector<bool> xs = select_best(estimated);
-                cerr << "resemara done:\t\"" << to_hashed(xs, 250) << "\" -> " << estimated[xs] << (history.count(xs) ? " (decided)" : " (estimated)") << endl;
+                cerr << "resemara done:\t\"" << to_hashed(xs, 250) << "\" -> " << estimated[xs] << (scores.count(xs) ? " (decided)" : " (estimated)") << endl;
             }
         } else {
             vector<bool> xs = select_best(estimated);
@@ -160,8 +173,13 @@ int main() {
             }
             ys = apply_decided(decided, ys);
             query(ys);
+            bool should_flip = estimated[xs] < estimated[ys];
+            if (should_flip) flip_count += 1;
+            query_log([&]() { cerr << (should_flip ? "(flipped)" : ""); });
         }
     }
-    assert (decided.size() == X or history[select_best(history)] == N);
+    assert (decided.size() == X or scores[select_best(scores)] == N);
+    cerr << "flipping has occured " << flip_count << " times" << endl;
+    cerr << visualize_decided(decided) << endl;
     return 0;
 }
