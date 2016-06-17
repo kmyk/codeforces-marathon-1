@@ -128,12 +128,8 @@ int flipped_score(int score) {
 int main() {
     vector<vector<bool> > history;
     map<vector<bool>,int> scores;
-    map<vector<bool>,int> estimated;
     map<int,bool> decided;
     int query_count = 0;
-    vector<bool> should_skip(N);
-    const int score_skip_length = 3;
-    int skip_count = 0;
     auto query = [&](vector<bool> const & xs) {
         query_count += 1;
         cout << decode(xs) << endl;
@@ -141,13 +137,7 @@ int main() {
         int score; cin >> score;
         history.push_back(xs);
         scores[xs] = score;
-        estimated[xs] = score;
-        estimated[flip(xs)] = flipped_score(score);
         decided[score-1] = not xs[score-1];
-        repeat (i,score_skip_length) if (not should_skip[score - i]) {
-            should_skip[score - i] = true;
-            skip_count += 1;
-        }
         return score;
     };
     auto query_log = [&](function<void ()> f) {
@@ -157,80 +147,37 @@ int main() {
         cerr << endl;
         cerr.flush();
     };
-    int flip_count = 0;
-    bool is_over = false;
-    bool is_over_first = true;
-    const int l = 45;
-    const int x0 = 1;
-    vector<bool> base;
-    vector<bool> should_flip(N);
-    while (query_count < X) {
-        if (query_count < x0) {
-            vector<bool> xs = random_binary(N);
-            xs = apply_decided(decided, xs);
-            query(xs);
-            query_log([&]() { cerr << "random"; });
-            if (query_count == x0) {
-                base = history[0];
-                repeat (i,x0) {
-                    if (abs(scores[history[i]] - ES) < abs(scores[base] - ES)) {
-                        base = history[i];
-                    }
-                }
+    repeat (i,X-1) {
+        vector<bool> xs = random_binary(N);
+        xs = apply_decided(decided, xs);
+        query(xs);
+        query_log([&]() { cerr << "random"; });
+    }
+    vector<vector<double> > acc(2, vector<double>(N));
+    vector<vector<int> > cnt(2, vector<int>(N));
+    for (auto xs : history) {
+        int score = scores[xs];
+        double fixed_score = scores[xs];
+        for (auto it : decided) {
+            if (it.first <= fixed_score and xs[it.first-1] != it.second) {
+                fixed_score += 1.5;
             }
-        } else if (not is_over) {
-            vector<bool> xs = base;
-            int fst = 0, lst = 0;
-            vector<bool> ys = xs; {
-                int cnt = 0;
-                repeat (i,N) if (not should_skip[i]) {
-                    ys[i] = not ys[i];
-                    should_skip[i] = true;
-                    cnt += 1;
-                    if (not fst) fst = i;
-                    lst = i;
-                    if (cnt >= l) break;
-                }
-                if (ES < lst) is_over = true;
-                ys = apply_decided(decided, ys);
-            }
-            query(ys);
-            // bool p = scores[xs] + skip_count < scores[ys];
-            bool p = scores[xs] + decided.size() * 1.8 < scores[ys];
-            if (p) {
-                repeat (i,N) if (xs[i] != ys[i]) should_flip[i] = true;
-                flip_count += l;
-            }
-            query_log([&]() { cerr << "[" << fst << "," << lst << "] " << skip_count << " " << (p ? "accepted " : ""); });
-        } else if (is_over and is_over_first) {
-            is_over_first = false;
-            vector<bool> xs = base;
-            vector<bool> ys = xs;
-            repeat (i,N) if (should_flip[i]) ys[i] = not ys[i];
-            ys = apply_decided(decided, ys);
-            query(ys);
-            query_log([&]() { cerr << "range-wise done"; });
-        } else if (is_over) {
-            vector<bool> xs = select_best(scores);
-            int fst = 0, lst = 0;
-            vector<bool> ys = xs; {
-                int cnt = 0;
-                repeat (i,N) if (not should_skip[i]) {
-                    ys[i] = not ys[i];
-                    should_skip[i] = true;
-                    cnt += 1;
-                    if (not fst) fst = i;
-                    lst = i;
-                    if (cnt >= l) break;
-                }
-                ys = apply_decided(decided, ys);
-            }
-            query(ys);
-            query_log([&]() { cerr << "[" << fst << "," << lst << "] "; });
+        }
+        repeat (i,score) {
+            acc[xs[i]][i] += fixed_score;
+            cnt[xs[i]][i] += 1;
         }
     }
+    vector<bool> ys(N);
+    repeat (i,N) {
+        if (cnt[0][i] and cnt[1][i]) {
+            ys[i] = acc[0][i] / cnt[0][i] < acc[1][i] / cnt[1][i];
+        }
+    }
+    ys = apply_decided(decided, ys);
+    query(ys);
+    query_log([&]() { cerr << "summarized"; });
     assert (decided.size() == X or scores[select_best(scores)] == N);
-    cerr << "flipping has occured " << flip_count << " times" << endl;
     cerr << visualize_decided(decided) << endl;
     return 0;
 }
