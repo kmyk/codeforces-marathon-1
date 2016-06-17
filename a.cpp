@@ -131,6 +131,9 @@ int main() {
     map<vector<bool>,int> estimated;
     map<int,bool> decided;
     int query_count = 0;
+    vector<bool> should_skip(N);
+    const int score_skip_length = 3;
+    int skip_count = 0;
     auto query = [&](vector<bool> const & xs) {
         query_count += 1;
         cout << decode(xs) << endl;
@@ -141,70 +144,89 @@ int main() {
         estimated[xs] = score;
         estimated[flip(xs)] = flipped_score(score);
         decided[score-1] = not xs[score-1];
+        repeat (i,score_skip_length) if (not should_skip[score - i]) {
+            should_skip[score - i] = true;
+            skip_count += 1;
+        }
         return score;
     };
     auto query_log = [&](function<void ()> f) {
         vector<bool> xs = history.back();
-        cerr << "query " << query_count << ":\t\"" << to_hashed(xs, 250) << "\" -> " << scores[xs] << " ";
+        cerr << "query " << (query_count >= 10 ? "" : " ") << (query_count >= 100 ? "" : " ") << query_count << ": " << to_hashed(xs, 500) << "\" -> " << scores[xs] << " ";
         f();
         cerr << endl;
         cerr.flush();
     };
     int flip_count = 0;
-    bool in_random = false;
-    const int l = 100;
+    bool is_over = false;
+    bool is_over_first = true;
+    const int l = 45;
     const int x0 = 1;
-    const double p = 0.01;
-    vector<bool> should_flip((N + l-1) / l);
+    vector<bool> base;
+    vector<bool> should_flip(N);
     while (query_count < X) {
         if (query_count < x0) {
             vector<bool> xs = random_binary(N);
             xs = apply_decided(decided, xs);
             query(xs);
-            query_log([&]() { });
+            query_log([&]() { cerr << "random"; });
             if (query_count == x0) {
-                vector<bool> xs = select_best(scores);
-                cerr << "resemara done:\t\"" << to_hashed(xs, 250) << "\" -> " << scores[xs] << (scores.count(xs) ? " (decided)" : " (estimated)") << endl;
-            }
-        } else if ((query_count - x0 + 1) * l < decided.begin()->first) {
-            vector<bool> xs = history[0]; assert (x0 == 1);
-            int j = query_count - x0;
-            vector<bool> ys; {
-                vector<vector<bool> > yss = unconcat(xs, l);
-                yss[j] = flip(yss[j]);
-                ys = concat(yss);
-            }
-            ys = apply_decided(decided, ys);
-            query(ys);
-            should_flip[j] = scores[xs] + decided.size() * 2 < scores[ys];
-            if (should_flip[j]) flip_count += 1;
-            query_log([&]() { cerr << (should_flip[j] ? "(flipped)" : ""); });
-        } else if (not in_random) {
-            in_random = true;
-            vector<bool> xs = history[0]; assert (x0 == 1);
-            vector<vector<bool> > yss = unconcat(xs, l);
-            repeat (j,should_flip.size()) {
-                if (should_flip[j]) {
-                    yss[j] = flip(yss[j]);
+                base = history[0];
+                repeat (i,x0) {
+                    if (abs(scores[history[i]] - ES) < abs(scores[base] - ES)) {
+                        base = history[i];
+                    }
                 }
             }
-            vector<bool> ys = concat(yss);
+        } else if (not is_over) {
+            vector<bool> xs = base;
+            int fst = 0, lst = 0;
+            vector<bool> ys = xs; {
+                int cnt = 0;
+                repeat (i,N) if (not should_skip[i]) {
+                    ys[i] = not ys[i];
+                    should_skip[i] = true;
+                    cnt += 1;
+                    if (not fst) fst = i;
+                    lst = i;
+                    if (cnt >= l) break;
+                }
+                if (ES < lst) is_over = true;
+                ys = apply_decided(decided, ys);
+            }
+            query(ys);
+            // bool p = scores[xs] + skip_count < scores[ys];
+            bool p = scores[xs] + decided.size() * 1.8 < scores[ys];
+            if (p) {
+                repeat (i,N) if (xs[i] != ys[i]) should_flip[i] = true;
+                flip_count += l;
+            }
+            query_log([&]() { cerr << "[" << fst << "," << lst << "] " << skip_count << " " << (p ? "accepted " : ""); });
+        } else if (is_over and is_over_first) {
+            is_over_first = false;
+            vector<bool> xs = base;
+            vector<bool> ys = xs;
+            repeat (i,N) if (should_flip[i]) ys[i] = not ys[i];
             ys = apply_decided(decided, ys);
             query(ys);
             query_log([&]() { cerr << "range-wise done"; });
-        } else {
-            static random_device device;
-            static default_random_engine engine(device());
-            uniform_real_distribution<double> dist(0, 1);
+        } else if (is_over) {
             vector<bool> xs = select_best(scores);
-            repeat (i,N) {
-                if (dist(engine) < p) {
-                    xs[i] = not xs[i];
+            int fst = 0, lst = 0;
+            vector<bool> ys = xs; {
+                int cnt = 0;
+                repeat (i,N) if (not should_skip[i]) {
+                    ys[i] = not ys[i];
+                    should_skip[i] = true;
+                    cnt += 1;
+                    if (not fst) fst = i;
+                    lst = i;
+                    if (cnt >= l) break;
                 }
+                ys = apply_decided(decided, ys);
             }
-            xs = apply_decided(decided, xs);
-            query(xs);
-            query_log([&]() { });
+            query(ys);
+            query_log([&]() { cerr << "[" << fst << "," << lst << "] "; });
         }
     }
     assert (decided.size() == X or scores[select_best(scores)] == N);
