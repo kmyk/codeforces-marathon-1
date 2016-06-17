@@ -147,8 +147,9 @@ int main() {
         cerr << endl;
         cerr.flush();
     };
+    vector<bool> fixed = random_binary(1100);
     repeat (i,X-1) {
-        vector<bool> xs = random_binary(N);
+        vector<bool> xs = encode(decode(random_binary(3900)) + decode(fixed));
         xs = apply_decided(decided, xs);
         query(xs);
         query_log([&]() { cerr << "random"; });
@@ -168,7 +169,7 @@ int main() {
             cnt[xs[i]][i] += 1;
         }
     }
-    vector<bool> ys(N);
+    vector<bool> ys = encode(decode(random_binary(3900)) + decode(fixed));
     repeat (i,N) {
         if (cnt[0][i] and cnt[1][i]) {
             ys[i] = acc[0][i] / cnt[0][i] < acc[1][i] / cnt[1][i];
